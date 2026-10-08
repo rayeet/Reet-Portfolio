@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reet — Delhi AQI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    width: 100%; background: var(--bg); font-family: 'Switzer', sans-serif;
+    color: #141414;
+  }
+
+  :root {
+    --sidebar-w: 170px;
+    --content-w: 760px;
+    --content-left: max(24px, calc(50vw - (var(--content-w) / 2)));
+    --sidebar-left: max(24px, calc((var(--content-left) / 2) - (var(--sidebar-w) / 2)));
+  }
+
+  #section-nav {
+    position: fixed;
+    left: var(--sidebar-left);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  #section-nav.visible { opacity: 1; pointer-events: auto; }
+  #section-nav a {
+    display: block;
+    font-size: 13px;
+    color: #c7c7c7;
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    padding-left: 12px;
+    line-height: 1.3;
+    transition: color 0.25s ease, border-color 0.25s ease;
+  }
+  #section-nav a:hover { color: #6b6b6b; }
+  #section-nav a.active { color: #141414; border-left-color: #141414; }
+
+  @media (max-width: 900px) {
+    #section-nav { display: none; }
+  }
+
+  main { padding-top: calc(var(--header-h) + 4vh); }
+
+  .intro-viewport {
+    min-height: calc(100vh - var(--header-h) - 4vh);
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+
+  #hero-strings-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 0;
+  }
+
+  .hero-rect {
+    position: relative;
+    z-index: 1;
+    width: 760px;
+    margin-left: var(--content-left);
+    display: flex;
+    align-items: center;
+    gap: 3%;
+    padding: 30px 34px;
+    box-sizing: border-box;
+  }
+  .hero-rect-image {
+    flex: 0 0 60%;
+    max-width: 60%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+  }
+  .hero-rect-image img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+  .hero-rect-right {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 26px;
+  }
+  .hero-rect-info {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .hero-rect-info .info-item { border-left: 1px solid #141414; padding-left: 16px; }
+  .hero-rect-info .info-item .label { font-size: 13px; color: #8a8a8a; margin-bottom: 4px; }
+  .hero-rect-info .info-item .value { font-size: 15px; }
+
+  .full-width-intro .content-section {
+    width: 760px;
+    margin-left: var(--content-left);
+    padding-top: 6vh;
+    border-top: 1px solid #e4e4e4;
+  }
+  .full-width-intro .content-section p { max-width: 100%; }
+
+  .narrow-wrap {
+    padding-left: var(--content-left);
+    padding-right: clamp(40px, 8vw, 140px);
+    padding-top: 9vh;
+    padding-bottom: 12vh;
+  }
+  .narrow-content { max-width: 760px; }
+
+  .content-section { margin-bottom: 9vh; scroll-margin-top: 18vh; }
+  .content-section:last-child { margin-bottom: 0; }
+
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 3vh;
+  }
+  .section-divider::before, .section-divider::after {
+    content: ''; flex: 1; height: 1px; background: #e4e4e4;
+  }
+  .section-divider span {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #8a8a8a;
+    white-space: nowrap;
+  }
+
+  .content-section p {
+    max-width: 740px;
+    font-size: 16px;
+    line-height: 1.75;
+    color: #2b2b2b;
+  }
+  .content-section p + p { margin-top: 1.6em; }
+
+  /* Data & Methodology: each measure gets a small bold heading. */
+  .method-item { margin-top: 3.5vh; }
+  .method-item h3 { font-size: 15px; font-weight: 700; color: #141414; margin-bottom: 6px; }
+  .method-item p { margin-top: 0; }
+
+  /* Data sources list. Linked names are underlined. */
+  .source-list { list-style: none; margin-top: 1vh; }
+  .source-list li {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #2b2b2b;
+    padding: 12px 0;
+    border-bottom: 1px solid #efefef;
+  }
+  .source-list li:last-child { border-bottom: none; }
+  .source-list a {
+    color: #141414;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  .source-list a:hover { opacity: 0.6; }
+
+  .media-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 2), 1fr);
+    gap: 3%;
+    margin-top: 4vh;
+  }
+  .media-grid .placeholder { aspect-ratio: 4 / 3; background: #e2e2e2; }
+  .media-grid img, .media-grid video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .ext-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: #141414;
+    text-decoration: none;
+    border: 1px solid #ccc;
+    padding: 9px 18px;
+    border-radius: 2px;
+    margin-top: 3vh;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .ext-link:hover { background: #141414; color: #fff; border-color: #141414; }
+
+  /* Image carousel (dot navigation). */
+  .image-carousel { margin-top: 4vh; }
+  .carousel-frame {
+    aspect-ratio: 16 / 10;
+    background: #e2e2e2;
+    overflow: hidden;
+  }
+  .carousel-frame img, .carousel-frame video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .carousel-dots button {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    border: 1px solid #141414;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .carousel-dots button.active { background: #141414; }
+
+  /* Previous/next project footer -- full page width. */
+  /* End of page: ← previous · site links · next →, all on one row */
+  #project-footer-nav {
+    margin-top: 4vh;
+    border-top: 1px solid #e4e4e4;
+    padding: clamp(28px, 5vh, 56px) clamp(24px, 6vw, 80px);
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 24px;
+  }
+  #project-footer-nav > a {
+    font-size: clamp(12px, 1.1vw, 14px);
+    color: #141414;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #project-footer-nav > a:hover { opacity: 0.6; }
+  #project-footer-nav .prev-link { justify-self: start; }
+  #project-footer-nav .next-link { justify-self: end; }
+  @media (max-width: 900px) {
+    #project-footer-nav { grid-template-columns: 1fr 1fr; }
+    #project-footer-nav .site-links { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; gap: 18px 32px; margin-top: 8px; }
+  }
+
+  /* Image gallery (lightbox) -- click any image to enlarge it, then
+     use the arrows / keyboard / swipe to move through every image. */
+  main img, main .image-carousel video { cursor: zoom-in; }
+  #lightbox {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(250,251,247,0.97);
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  #lightbox.open { display: flex; }
+  #lightbox .lb-stage {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 56px 84px;
+  }
+  #lightbox .lb-stage img, #lightbox .lb-stage video {
+    max-width: 100%; max-height: 100%;
+    width: auto; height: auto; object-fit: contain; display: block;
+    cursor: default;
+  }
+  #lightbox button {
+    position: absolute; background: none; border: none; cursor: pointer;
+    color: #141414; font-family: inherit; line-height: 1; padding: 12px;
+    transition: opacity 0.2s ease;
+  }
+  #lightbox button:hover { opacity: 0.5; }
+  #lightbox .lb-close { top: 14px; right: 18px; font-size: 34px; }
+  #lightbox .lb-nav { top: 50%; transform: translateY(-50%); font-size: 46px; }
+  #lightbox .lb-prev { left: 14px; }
+  #lightbox .lb-next { right: 14px; }
+  #lightbox .lb-count {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; letter-spacing: 0.08em; color: #8a8a8a;
+  }
+  @media (max-width: 700px) {
+    #lightbox .lb-stage { padding: 56px 12px; }
+    #lightbox .lb-nav { font-size: 36px; }
+  }
+
+  @media (max-width: 700px) {
+    .hero-rect { flex-direction: column; align-items: flex-start; width: auto; margin-left: 24px; margin-right: 24px; }
+    .hero-rect-image { max-width: 100%; flex-basis: auto; }
+    .media-grid { grid-template-columns: 1fr; }
+    .narrow-wrap { padding-left: clamp(24px, 4vw, 60px); }
+    #hero-strings-svg { display: none; }
+  }
+
+
+  /* ===== Site-wide: name block (top left) + link row, same as the home page ===== */
+  :root {
+    --bg: #fafbf7;   /* white with a very faint tint of the green string */
+    --nav-top: calc(min(100vw * 1020 / 1600, 100vh) * 0.035);
+    --doodle-w: clamp(64px, 5vw, 90px);
+    --doodle-h: calc(var(--doodle-w) * 0.4375);
+    --header-h: calc(var(--nav-top) + var(--doodle-h) + 18px);
+  }
+  #site-header {
+    position: absolute; top: 0; left: 0; right: 0; height: var(--header-h);
+    background: transparent; border: 0; z-index: 50;
+    font-family: 'Switzer', sans-serif;
+  }
+  #brand { position: absolute; top: var(--nav-top); left: 2%; display: flex; align-items: center; gap: 12px; height: var(--doodle-h); text-decoration: none; color: #141414; }
+  #brand:hover { opacity: 0.7; }
+  #brand-doodle { width: var(--doodle-w); height: var(--doodle-h); display: block; overflow: visible; }
+  #brand-doodle .eye { transform-box: fill-box; transform-origin: center; animation: blink 5s infinite; }
+  @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+  #brand-text { display: flex; flex-direction: column; justify-content: center; height: var(--doodle-h); }
+  #brand-name { font-size: calc(var(--doodle-w) * 0.225); line-height: 1.1; font-weight: 600; letter-spacing: -0.01em; }
+  #brand-role { position: relative; overflow: hidden; height: 1.15em; line-height: 1.15; font-size: calc(var(--doodle-w) * 0.165); font-weight: 400; color: #8a8a8a; min-width: 9em; }
+  #brand-role span { position: absolute; left: 0; top: 0; white-space: nowrap; transform: translateY(110%); opacity: 0; transition: transform 0.6s cubic-bezier(.2,.8,.2,1), opacity 0.6s ease; }
+  #brand-role span.in  { transform: translateY(0); opacity: 1; }
+  #brand-role span.out { transform: translateY(-110%); opacity: 0; }
+
+  /* Link row: small caps, brackets fade in on hover. The current
+     section keeps its brackets showing, e.g. ( WORK ). */
+  .site-links { display: flex; gap: clamp(28px, 3.2vw, 56px); align-items: center; justify-content: center; font-family: 'Switzer', sans-serif; }
+  .site-links a {
+    position: relative;
+    font-size: clamp(11px, 0.8vw, 13px); font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: #141414; text-decoration: none; white-space: nowrap;
+  }
+  .site-links a::before, .site-links a::after { position: absolute; top: 0; opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; }
+  .site-links a::before { content: '('; right: 100%; margin-right: 0.45em; transform: translateX(4px); }
+  .site-links a::after  { content: ')'; left: 100%;  margin-left: 0.45em;  transform: translateX(-4px); }
+  .site-links a:hover::before, .site-links a:hover::after,
+  .site-links a:focus-visible::before, .site-links a:focus-visible::after,
+  .site-links a.current::before, .site-links a.current::after { opacity: 1; transform: translateX(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    #brand-doodle .eye { animation: none; }
+    #brand-role span { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+  <header id="site-header">
+    <a id="brand" href="index.html" aria-label="Reet, home">
+      <svg id="brand-doodle" viewBox="0 5 64 28" fill="none" stroke="#141414" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <defs>
+          <filter id="doodle-rough" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="1.4"/>
+          </filter>
+        </defs>
+        <g filter="url(#doodle-rough)">
+          <!-- head peeking over the line -->
+          <path d="M19 31 C18 15, 25 8, 32 8 C39 8, 46 15, 45 31"/>
+          <!-- eyes -->
+          <ellipse class="eye" cx="27.5" cy="20" rx="2" ry="3" fill="#141414" stroke="none"/>
+          <ellipse class="eye" cx="36.5" cy="20" rx="2" ry="3" fill="#141414" stroke="none"/>
+          <!-- the ledge it's peeking over -->
+          <path d="M2 31 C14 30.5, 50 31.5, 62 31"/>
+          <!-- hands gripping the ledge -->
+          <path d="M8 31 C8 26, 14 26, 14 31 M10.5 28 L10.5 31 M50 31 C50 26, 56 26, 56 31 M53.5 28 L53.5 31"/>
+        </g>
+      </svg>
+      <span id="brand-text">
+        <span id="brand-name">Reet</span>
+        <span id="brand-role" aria-live="off">
+          <span class="in">Storyteller</span>
+          <span>Researcher</span>
+          <span>Designer</span>
+        </span>
+      </span>
+    </a>
+  </header>
+
+  <nav id="section-nav"></nav>
+
+  <main>
+
+    <div class="full-width-intro">
+
+      <div class="intro-viewport">
+        <svg id="hero-strings-svg"></svg>
+        <div class="hero-rect">
+          <div class="hero-rect-image">
+            <img src="Delhi AQI.png" alt="Delhi AQI">
+          </div>
+          <div class="hero-rect-right">
+            <div class="hero-rect-info">
+              <div class="info-item"><div class="label">Team</div><div class="value">2 members</div></div>
+              <div class="info-item"><div class="label">My role</div><div class="value">Research, Experience Design</div></div>
+              <div class="info-item"><div class="label">Timeline</div><div class="value">1 week</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="content-section" data-nav-label="Context">
+        <p>This installation confronts something that has, over time, become the new normal in the national capital, Delhi. Schools and colleges now cancel more days for air pollution than for almost any other reason. Delhi doesn't lack awareness, people already know the numbers are bad.</p>
+        <p>What this project pushes back against is the urgency that's gone missing, because the people who can afford it have quietly solved the problem for themselves, at a price everyone else ends up paying.</p>
+      </section>
+
+    </div>
+
+    <div class="narrow-wrap">
+      <div class="narrow-content">
+
+        <section class="content-section" data-nav-label="Problem">
+          <div class="section-divider"><span>Problem</span></div>
+          <p>Upper middle class residents of Delhi reduce their own exposure through purifiers, sealed vehicles, and filtered indoor spaces, but the pollution itself does not go anywhere. It stays in the shared air, and lands more heavily on people who cannot filter it out, particularly those whose work keeps them outdoors for long hours.</p>
+          <p>A guard at a gate, someone delivering food, domestic workers moving between homes, vendors whose entire business sits on the street. A public health crisis has effectively been managed as a private convenience.</p>
+        </section>
+
+        <section class="content-section" data-nav-label="Concept">
+          <div class="section-divider"><span>Concept</span></div>
+          <p>This project pairs a browser based data visualization with a thermal printer to make that inequality visible instead of just stating it. It works off a receipt, an object we glance at, pocket, and discard, engaging with it only long enough to confirm a transaction has gone through.</p>
+          <p>Much like how most of us engage with air quality data itself, checking it, maybe mentioning it, then moving on, because for many the pollution stays manageable, filtered out before it reaches us. The piece collects a few personal inputs and prints a receipt itemizing your daily PM2.5 exposure.</p>
+          <p>The turn happens at the point of printing. What comes out is not your receipt. It belongs to someone in your immediate orbit, someone whose exposure you've had no reason to think about, because they've been absorbing what you paid to avoid.</p>
+          <!-- Concept carousel (8 images): replace each filename below. -->
+          <div class="image-carousel" data-images='["Delhi.png", "1.png", "2.png", "3.png", "4.png", "5.png", "6.png", "receipt_screen.webp"]'></div>
+
+          <p style="margin-top: 4vh;">The installation was never meant to hand you a list of things to do differently. It works as a piece of advocacy instead, bringing into view an inequality that most of us live alongside every day without ever registering it, and letting that realisation stay with you after you walk away.</p>
+          <p>The receipt closes with the line "Thank you for your contribution. This person's lungs have been charged accordingly." It is there to make the cost impossible to miss: the polluted air you have paid to filter out has not disappeared, and the people who cannot afford to buy cleaner air are the ones paying for it with their lung health.</p>
+
+          <!-- Concept video: has sound + controls (play/pause, mute, timeline).
+               It plays only while it's on screen and pauses when you scroll away. -->
+          <div class="media-grid" style="--cols:1;">
+            <div class="placeholder">
+              <video src="DelhiAQI (2).mp4" data-play-in-view controls loop playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>
+            </div>
+          </div>
+
+          <!-- Concept image (single): replace the filename in src below. -->
+          <div class="media-grid" style="--cols:1;">
+            <div class="placeholder">
+              <img src="ThermalPrinter.jpg" alt="Delhi AQI">
+            </div>
+          </div>
+
+          <!-- Live website link: replace # with the real URL. -->
+          <a class="ext-link" href="https://aqidataviz.vercel.app/" target="_blank" rel="noopener">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10L10 2M4 2h6v6"/></svg>
+            View live website
+          </a>
+        </section>
+
+        <section class="content-section" data-nav-label="Data &amp; Methodology">
+          <div class="section-divider"><span>Data &amp; Methodology</span></div>
+          <p>Every receipt is personalised, calculated from the information each visitor enters before it prints.</p>
+
+          <div class="method-item">
+            <h3>Weighted daily exposure (TWA)</h3>
+            <p>A time-weighted average of the PM2.5 you breathe over a full 24 hours. Each environment you spend time in is assigned a PM2.5 concentration based on its location and the kind of filtration it has, and weighted by the hours you spend there.</p>
+          </div>
+
+          <div class="method-item">
+            <h3>Cigarette equivalent</h3>
+            <p>Based on Berkeley Earth's formula, which treats breathing 22 μg/m³ of PM2.5 for a full day as roughly equal to smoking one cigarette.</p>
+          </div>
+
+          <div class="method-item">
+            <h3>Privilege rank</h3>
+            <p>Unlike the other figures, the privilege rank is the same for everyone and is not calculated from your answers. Roughly 12% of Delhi's population falls into the upper-middle-class bracket this piece speaks to, and the rank is there to remind you that you belong to that small share of the city with the money to shield itself from polluted air. Clean air has quietly become a luxury, and most of Delhi cannot afford it.</p>
+          </div>
+
+          <div class="method-item">
+            <h3>The unpaid bill</h3>
+            <p>The printed receipt is marked unpaid because the exposure it lists is not yours. It belongs to the person you selected as the one you spend the most time with. The figures are an approximation rather than a record of any real individual, meant to spark a realisation of how far apart two lives can be even when they are closely tied and share the same hours of the day.</p>
+          </div>
+
+          <div class="method-item">
+            <h3>Worker conditions</h3>
+            <p>Working conditions are inferred from each job profile and cross-checked against Fairwork India 2024 and the Periodic Labour Force Survey (PLFS) 2022–23, which report on working hours, wages and conditions.</p>
+          </div>
+        </section>
+
+        <section class="content-section" data-nav-label="Target Audience">
+          <div class="section-divider"><span>Target Audience</span></div>
+          <p>This project targets people between 25 and 40, financially independent, living inside Delhi's pollution crisis while remaining largely insulated from it.</p>
+          <p>This is the group holding real economic power, social capital, and political voice, the people best positioned to push for systemic change, and also the people least often confronted with a reason to.</p>
+        </section>
+
+        <section class="content-section" data-nav-label="Data Sources">
+          <div class="section-divider"><span>Data Sources</span></div>
+          <ul class="source-list">
+            <li>CPCB / DPCC / SAFAR AQEWS: PM2.5 historical data, 2011–2024</li>
+            <li>AQLI 2025, University of Chicago EPIC: life expectancy loss methodology</li>
+            <li>Burnett et al. (2014), Environmental Health Perspectives: disease risk functions</li>
+            <li>Berkeley Earth: cigarette equivalence methodology</li>
+            <li>Fairwork India 2024, Oxford Internet Institute: gig worker conditions</li>
+            <li>PLFS 2022–23, Ministry of Statistics, Government of India: worker earnings and hours</li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- Previous/next project footer. Delhi AQI is first on the Work page,
+         so "previous" loops back to the last one, Patang. -->
+    <nav id="project-footer-nav">
+      <a class="prev-link" href="patang.html">&larr; Patang</a>
+      <nav class="site-links" aria-label="Site">
+        <a href="work.html" class="current">Work</a>
+        <a href="about.html">About</a>
+        <a class="email-link" href="#" data-email="reetmadaan01@gmail.com">Email</a>
+        <a href="https://www.linkedin.com/in/reet-madaan" target="_blank" rel="noopener">LinkedIn</a>
+        <!-- RESUME: replace PASTE-YOUR-RESUME-FILENAME-HERE.pdf with your resume file name, e.g. Reet-Resume.pdf (keep the PDF in the same folder as this page) -->
+        <a href="Resume_reet (2).pdf" target="_blank" rel="noopener">Resume</a>
+      </nav>
+      <a class="next-link" href="underneath-it-all.html">Underneath it all &rarr;</a>
+    </nav>
+
+  </main>
+
+<script>
+(function () {
+  'use strict';
+
+  const svg = document.getElementById('hero-strings-svg');
+  const viewport = document.querySelector('.intro-viewport');
+  const rectEl = document.querySelector('.hero-rect');
+  if (!svg || !viewport || !rectEl) return;
+  const svgNS = 'http://www.w3.org/2000/svg';
+
+  const N = 20;
+  const RADIUS = 140;
+  const MAX_DISP = 18;
+  const EASE = 0.15;
+  const EDGE_TAPER = 0.14;
+  const PIN_DEADZONE = 40;
+  const END_CAP_R = 4;
+
+  const WOBBLE_AMP = 5;
+  const WOBBLE_FREQ_RANGE = [0.9, 1.3];
+  const DRIFT_SPEED_RANGE = [0.05, 0.12];
+
+  let vw = 0, vh = 0;
+  let mouseX = -99999, mouseY = -99999;
+  let segments = [];
+  let pins = [];
+  let cornerPins = [];
+  const t0 = performance.now();
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+
+  function measure() {
+    const vr = viewport.getBoundingClientRect();
+    vw = vr.width; vh = vr.height;
+    const rr = rectEl.getBoundingClientRect();
+
+    const rectTL = { x: rr.left - vr.left, y: rr.top - vr.top };
+    const rectTR = { x: rr.right - vr.left, y: rr.top - vr.top };
+    const rectBR = { x: rr.right - vr.left, y: rr.bottom - vr.top };
+    const rectBL = { x: rr.left - vr.left, y: rr.bottom - vr.top };
+
+    const hdr = document.getElementById('site-header');
+    const navBottomY = hdr ? hdr.getBoundingClientRect().bottom - vr.top : -(window.innerHeight * 0.06);
+    const anchorTL = { x: 0, y: navBottomY };
+    const anchorTR = { x: vw, y: navBottomY };
+
+    const topDropL = rectTL.y - anchorTL.y;
+    const topDropR = rectTR.y - anchorTR.y;
+    const anchorBL = { x: 0, y: rectBL.y + topDropL };
+    const anchorBR = { x: vw, y: rectBR.y + topDropR };
+
+    cornerPins = [rectTL, rectTR, rectBR, rectBL];
+    pins = [...cornerPins, anchorTL, anchorTR, anchorBR, anchorBL];
+
+    window.__heroStringsMaxY = Math.max(anchorBL.y, anchorBR.y, rectBL.y, rectBR.y);
+
+    const defs = [
+      { p1: rectTL, p2: rectTR, wobble: true },
+      { p1: rectTR, p2: rectBR, wobble: true },
+      { p1: rectBR, p2: rectBL, wobble: true },
+      { p1: rectBL, p2: rectTL, wobble: true },
+      { p1: rectTL, p2: anchorTL, wobble: false },
+      { p1: rectTR, p2: anchorTR, wobble: false },
+      { p1: rectBR, p2: anchorBR, wobble: false },
+      { p1: rectBL, p2: anchorBL, wobble: false },
+    ];
+
+    svg.innerHTML = '';
+
+    const svgDefs = document.createElementNS(svgNS, 'defs');
+    const filter = document.createElementNS(svgNS, 'filter');
+    filter.setAttribute('id', 'hero-crayon');
+    filter.setAttribute('filterUnits', 'userSpaceOnUse');
+    filter.setAttribute('x', '-2000'); filter.setAttribute('y', '-2000');
+    filter.setAttribute('width', '4000'); filter.setAttribute('height', '4000');
+    const turb = document.createElementNS(svgNS, 'feTurbulence');
+    turb.setAttribute('type', 'fractalNoise');
+    turb.setAttribute('baseFrequency', '0.75 0.75');
+    turb.setAttribute('numOctaves', '2');
+    turb.setAttribute('seed', '5');
+    turb.setAttribute('result', 'noise');
+    const dispMap = document.createElementNS(svgNS, 'feDisplacementMap');
+    dispMap.setAttribute('in', 'SourceGraphic');
+    dispMap.setAttribute('in2', 'noise');
+    dispMap.setAttribute('scale', '1.3');
+    dispMap.setAttribute('xChannelSelector', 'R');
+    dispMap.setAttribute('yChannelSelector', 'G');
+    filter.appendChild(turb);
+    filter.appendChild(dispMap);
+    svgDefs.appendChild(filter);
+    svg.appendChild(svgDefs);
+
+    segments = defs.map(d => {
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#555555');
+      path.setAttribute('stroke-width', d.wobble ? '2' : '1.6');
+      path.setAttribute('stroke-linecap', 'round');
+      if (d.wobble) path.setAttribute('filter', 'url(#hero-crayon)');
+      svg.appendChild(path);
+      return {
+        ...d,
+        pathEl: path,
+        disp: new Array(N).fill(0),
+        waveFreq: rand(WOBBLE_FREQ_RANGE[0], WOBBLE_FREQ_RANGE[1]),
+        wavePhase: rand(0, Math.PI * 2),
+        driftSpeed: rand(DRIFT_SPEED_RANGE[0], DRIFT_SPEED_RANGE[1]) * (Math.random() < 0.5 ? 1 : -1),
+      };
+    });
+
+    cornerPins.forEach(p => {
+      const c = document.createElementNS(svgNS, 'circle');
+      c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', END_CAP_R);
+      c.setAttribute('fill', '#555555');
+      svg.appendChild(c);
+    });
+  }
+
+  function catmullRomPath(points) {
+    let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)];
+      const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+    }
+    return d;
+  }
+
+  function smoothstep(x) { return x * x * (3 - 2 * x); }
+
+  function render(now) {
+    const elapsed = (now - t0) / 1000;
+
+    segments.forEach(seg => {
+      const pts = [];
+      const dx0 = seg.p2.x - seg.p1.x, dy0 = seg.p2.y - seg.p1.y;
+      const len = Math.hypot(dx0, dy0) || 1;
+      const ux = dx0 / len, uy = dy0 / len;
+      const perpX = -uy, perpY = ux;
+
+      for (let i = 0; i < N; i++) {
+        const t = i / (N - 1);
+        const baseX = seg.p1.x + dx0 * t;
+        const baseY = seg.p1.y + dy0 * t;
+
+        const edge = Math.min(t, 1 - t);
+        const taper = smoothstep(Math.min(1, edge / EDGE_TAPER));
+
+        let wobbleOffset = 0;
+        if (seg.wobble) {
+          const phase = seg.wavePhase + elapsed * seg.driftSpeed;
+          wobbleOffset = Math.sin(t * seg.waveFreq * Math.PI * 2 + phase) * WOBBLE_AMP * taper;
+        }
+
+        const dx = mouseX - baseX, dy = mouseY - baseY;
+        const dist = Math.hypot(dx, dy);
+        let influence = Math.max(0, 1 - dist / RADIUS);
+        influence = smoothstep(influence);
+
+        let nearestPinDist = Infinity;
+        for (let k = 0; k < pins.length; k++) {
+          const pd = Math.hypot(baseX - pins[k].x, baseY - pins[k].y);
+          if (pd < nearestPinDist) nearestPinDist = pd;
+        }
+        const pinSuppress = smoothstep(Math.min(1, nearestPinDist / PIN_DEADZONE));
+
+        const side = (dx * perpX + dy * perpY) || 0.0001;
+        const targetDisp = influence * MAX_DISP * taper * pinSuppress * Math.sign(side);
+
+        seg.disp[i] += (targetDisp - seg.disp[i]) * EASE;
+        if (Math.abs(seg.disp[i]) < 0.01) seg.disp[i] = 0;
+
+        const totalOffset = wobbleOffset + seg.disp[i];
+        pts.push({ x: baseX + perpX * totalOffset, y: baseY + perpY * totalOffset });
+      }
+      seg.pathEl.setAttribute('d', catmullRomPath(pts));
+    });
+
+    requestAnimationFrame(render);
+  }
+
+  viewport.addEventListener('pointermove', (e) => {
+    const r = viewport.getBoundingClientRect();
+    mouseX = e.clientX - r.left;
+    mouseY = e.clientY - r.top;
+  });
+  viewport.addEventListener('pointerleave', () => {
+    mouseX = -99999; mouseY = -99999;
+  });
+
+  window.addEventListener('resize', measure);
+  window.addEventListener('load', measure);
+  measure();
+  requestAnimationFrame(render);
+})();
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  const sections = Array.from(document.querySelectorAll('[data-nav-label]'));
+  const navEl = document.getElementById('section-nav');
+  const svgEl = document.getElementById('hero-strings-svg');
+
+  sections.forEach(sec => {
+    if (!sec.id) {
+      sec.id = sec.dataset.navLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    }
+  });
+
+  const links = sections.map(sec => {
+    const a = document.createElement('a');
+    a.href = '#' + sec.id;
+    a.textContent = sec.dataset.navLabel;
+    navEl.appendChild(a);
+    return a;
+  });
+
+  let ticking = false;
+
+  function update() {
+    ticking = false;
+    // Active line near the top of the screen so short sections like
+    // Context get highlighted too (same as the other project pages).
+    const activeLineY = window.innerHeight * 0.22;
+
+    // Sidebar appears as soon as the hero rectangle's left edge has
+    // scrolled above the top of the screen.
+    let edgeBottom = -Infinity;
+    if (svgEl) {
+      const p = svgEl.querySelectorAll('path')[3];
+      if (p) edgeBottom = p.getBoundingClientRect().bottom;
+    }
+    const showSidebar = edgeBottom <= 0;
+    navEl.classList.toggle('visible', showSidebar);
+
+    if (!showSidebar) {
+      links.forEach(l => l.classList.remove('active'));
+      return;
+    }
+
+    let activeIndex = 0;
+    sections.forEach((sec, i) => {
+      if (sec.getBoundingClientRect().top <= activeLineY) activeIndex = i;
+    });
+
+    const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    if (atBottom) activeIndex = sections.length - 1;
+
+    links.forEach((l, i) => l.classList.toggle('active', i === activeIndex));
+  }
+
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(update);
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  update();
+})();
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* Image/video carousel, dot navigation. Any slot can be a photo or a
+     video -- picked automatically from the file extension. */
+  document.querySelectorAll('.image-carousel').forEach(el => {
+    let images = [];
+    try { images = JSON.parse(el.dataset.images || '[]'); } catch (e) { images = []; }
+    if (!images.length) images = [''];
+
+    const frame = document.createElement('div');
+    frame.className = 'carousel-frame';
+    el.appendChild(frame);
+
+    const dots = document.createElement('div');
+    dots.className = 'carousel-dots';
+    el.appendChild(dots);
+
+    const dotEls = images.map((_, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-label', 'Show image ' + (i + 1));
+      b.addEventListener('click', () => show(i));
+      dots.appendChild(b);
+      return b;
+    });
+
+    function show(i) {
+      frame.innerHTML = '';
+      const src = images[i];
+      if (src) {
+        const isVideo = /\.(mp4|webm|mov|m4v)$/i.test(src);
+        let node;
+        if (isVideo) {
+          node = document.createElement('video');
+          node.src = src;
+          node.loop = true;
+          node.muted = true;
+          node.autoplay = true;
+          node.playsInline = true;
+        } else {
+          node = document.createElement('img');
+          node.src = src;
+          node.alt = '';
+        }
+        frame.appendChild(node);
+      }
+      dotEls.forEach((d, j) => d.classList.toggle('active', j === i));
+    }
+
+    show(0);
+  });
+})();
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* Image gallery. Click any image in the page to open it enlarged;
+     left/right arrows (or the keyboard arrows, or a swipe) move to the
+     previous/next image in page order. Images inside every carousel are
+     all included, not just the visible one. Slots still set to
+     PASTE-YOUR-FILENAME-HERE are skipped. */
+  const main = document.querySelector('main');
+  if (!main) return;
+
+  const lb = document.createElement('div');
+  lb.id = 'lightbox';
+  lb.setAttribute('role', 'dialog');
+  lb.setAttribute('aria-modal', 'true');
+  lb.innerHTML =
+    '<button type="button" class="lb-close" aria-label="Close">&times;</button>' +
+    '<button type="button" class="lb-nav lb-prev" aria-label="Previous image">&#8249;</button>' +
+    '<div class="lb-stage"></div>' +
+    '<button type="button" class="lb-nav lb-next" aria-label="Next image">&#8250;</button>' +
+    '<div class="lb-count"></div>';
+  document.body.appendChild(lb);
+
+  const stage = lb.querySelector('.lb-stage');
+  const countEl = lb.querySelector('.lb-count');
+  const prevBtn = lb.querySelector('.lb-prev');
+  const nextBtn = lb.querySelector('.lb-next');
+
+  const isPlaceholder = s => !s || /PASTE-YOUR-FILENAME-HERE/i.test(s);
+  const isVideo = s => /\.(mp4|webm|mov|m4v)$/i.test(s);
+
+  let items = [];
+  let index = 0;
+
+  function buildItems() {
+    const list = [];
+    main.querySelectorAll('img, .image-carousel').forEach(n => {
+      if (n.classList.contains('image-carousel')) {
+        let arr = [];
+        try { arr = JSON.parse(n.dataset.images || '[]'); } catch (e) { arr = []; }
+        arr.forEach(s => { if (!isPlaceholder(s)) list.push({ src: s, alt: '', carousel: n }); });
+      } else if (!n.closest('.image-carousel')) {
+        const s = n.getAttribute('src');
+        if (!isPlaceholder(s)) list.push({ src: s, alt: n.alt || '', node: n });
+      }
+    });
+    return list;
+  }
+
+  function show(i) {
+    index = (i + items.length) % items.length;
+    const it = items[index];
+    stage.innerHTML = '';
+    let node;
+    if (isVideo(it.src)) {
+      node = document.createElement('video');
+      node.src = it.src;
+      node.loop = true; node.muted = true; node.autoplay = true;
+      node.playsInline = true; node.controls = true;
+    } else {
+      node = document.createElement('img');
+      node.src = it.src;
+      node.alt = it.alt;
+    }
+    stage.appendChild(node);
+    countEl.textContent = (index + 1) + ' / ' + items.length;
+    const multi = items.length > 1;
+    prevBtn.style.display = multi ? '' : 'none';
+    nextBtn.style.display = multi ? '' : 'none';
+    countEl.style.display = multi ? '' : 'none';
+  }
+
+  function open(i) {
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    show(i);
+  }
+
+  function close() {
+    lb.classList.remove('open');
+    document.body.style.overflow = '';
+    stage.innerHTML = '';
+  }
+
+  // Images anywhere on the page, plus videos inside carousels, all open
+  // in the gallery.
+  document.addEventListener('click', e => {
+    const el = e.target.closest && e.target.closest('main img, main .image-carousel video');
+    if (!el) return;
+    const src = el.getAttribute('src');
+    if (isPlaceholder(src)) return;
+    if (el.tagName === 'IMG' && el.complete && !el.naturalWidth) return;
+    items = buildItems();
+    let i = items.findIndex(it => it.node === el);
+    if (i < 0) {
+      const car = el.closest('.image-carousel');
+      i = items.findIndex(it => it.carousel === car && it.src === src);
+    }
+    if (i < 0) return;
+    open(i);
+  });
+
+  prevBtn.addEventListener('click', e => { e.stopPropagation(); show(index - 1); });
+  nextBtn.addEventListener('click', e => { e.stopPropagation(); show(index + 1); });
+  lb.querySelector('.lb-close').addEventListener('click', close);
+
+  // Click on the empty area around the image closes it.
+  lb.addEventListener('click', e => {
+    if (e.target === lb || e.target === stage) close();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft') show(index - 1);
+    else if (e.key === 'ArrowRight') show(index + 1);
+  });
+
+  // Swipe on touch screens.
+  let touchX = null;
+  lb.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) > 50) show(index + (dx < 0 ? 1 : -1));
+  });
+})();
+</script>
+
+
+<script>
+/* Videos marked data-play-in-view play only while at least half of the
+   video is on screen, and pause when scrolled away. They start with sound;
+   if the browser blocks sound before the visitor has clicked anything on
+   the page, the video starts muted instead and the speaker icon in its
+   controls turns the sound on. */
+(function () {
+  'use strict';
+  const vids = document.querySelectorAll('video[data-play-in-view]');
+  if (!vids.length || !('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      const v = en.target;
+      if (en.isIntersecting && en.intersectionRatio >= 0.5) {
+        v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+      } else if (!v.paused) {
+        v.pause();
+      }
+    });
+  }, { threshold: [0, 0.5] });
+  vids.forEach(v => io.observe(v));
+})();
+</script>
+
+
+<script>
+/* Rotating title under the name (same as the home page). */
+(function () {
+  const INTERVAL = 2600;
+  const items = Array.from(document.querySelectorAll('#brand-role span'));
+  if (items.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let i = 0;
+  setInterval(() => {
+    const cur = items[i]; i = (i + 1) % items.length; const next = items[i];
+    cur.classList.remove('in'); cur.classList.add('out');
+    next.classList.remove('out');
+    next.style.transition = 'none'; next.style.transform = 'translateY(110%)';
+    void next.offsetWidth;
+    next.style.transition = ''; next.style.transform = '';
+    next.classList.add('in');
+    setTimeout(() => cur.classList.remove('out'), 650);
+  }, INTERVAL);
+})();
+
+/* Email links: copy the address and show "Copied!" for 2 seconds.
+   The address comes from data-email="..." on the Email link. */
+(function () {
+  document.querySelectorAll('.email-link').forEach(link => {
+    const original = link.textContent; let timer = null;
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const email = link.dataset.email;
+      const fallback = () => {
+        const ta = document.createElement('textarea'); ta.value = email;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (err) {}
+        document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(email).catch(fallback); else fallback();
+      link.textContent = 'Copied!';
+      clearTimeout(timer); timer = setTimeout(() => { link.textContent = original; }, 2000);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

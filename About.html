@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reet — About</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: var(--bg); font-family: 'Switzer', sans-serif; color: #141414; overflow-x: hidden; }
+
+    /* Same canvas as the index page, so the navbar and the bottom links
+       sit in exactly the same place. */
+    #canvas { position: relative; width: 100vw; aspect-ratio: 1600 / 1020; max-height: 100vh; margin: 0 auto; overflow: hidden; }
+
+    /* Name block sits in the canvas exactly like on the home page;
+       the link row sits bottom-centre like on the home page. */
+    #site-header { position: absolute; }
+    #about-links { position: absolute; left: 0; right: 0; bottom: 4%; z-index: 2; }
+
+    /* About content: image on the left, text on the right, centred
+       vertically between the navbar and the bottom links. */
+    #about {
+      position: absolute;
+      top: 14%; bottom: 14%; left: 6%; right: 6%;
+      display: flex; align-items: center; gap: 5%;
+    }
+    .about-image {
+      flex: 0 0 42%;
+      aspect-ratio: 16 / 10;
+      background: #e2e2e2;
+      overflow: hidden;
+    }
+    .about-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .about-text { flex: 1 1 auto; max-width: 620px; }
+    .about-text p {
+      font-size: clamp(13px, 1.05vw, 17px);
+      line-height: 1.85;
+      color: #2b2b2b;
+    }
+    .about-text p + p { margin-top: 1.1em; }
+
+    /* Phones: stack the image above the text and let the page scroll. */
+    @media (max-width: 760px) {
+      #canvas { aspect-ratio: auto; max-height: none; min-height: 100vh; padding: 90px 24px 110px; }
+      #brand { top: 24px; left: 24px; }
+      #about { position: static; flex-direction: column; align-items: stretch; gap: 28px; }
+      .about-image { flex: none; width: 100%; }
+      .about-text { max-width: none; }
+      .about-text p { font-size: 15px; }
+      #about-links { bottom: 32px; flex-wrap: wrap; gap: 14px 24px; padding: 0 24px; }
+    }
+
+    /* Wavy frame around the image: 4 wobbly sides that react to the cursor. */
+    #about-strings {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 0;
+    }
+    #about { z-index: 1; }
+    @media (max-width: 760px) { #about-strings { display: none; } }
+
+  /* ===== Site-wide: name block (top left) + link row, same as the home page ===== */
+  :root {
+    --bg: #fafbf7;   /* white with a very faint tint of the green string */
+    --nav-top: calc(min(100vw * 1020 / 1600, 100vh) * 0.035);
+    --doodle-w: clamp(64px, 5vw, 90px);
+    --doodle-h: calc(var(--doodle-w) * 0.4375);
+    --header-h: calc(var(--nav-top) + var(--doodle-h) + 18px);
+  }
+  #site-header {
+    position: absolute; top: 0; left: 0; right: 0; height: var(--header-h);
+    background: transparent; border: 0; z-index: 50;
+    font-family: 'Switzer', sans-serif;
+  }
+  #brand { position: absolute; top: var(--nav-top); left: 2%; display: flex; align-items: center; gap: 12px; height: var(--doodle-h); text-decoration: none; color: #141414; }
+  #brand:hover { opacity: 0.7; }
+  #brand-doodle { width: var(--doodle-w); height: var(--doodle-h); display: block; overflow: visible; }
+  #brand-doodle .eye { transform-box: fill-box; transform-origin: center; animation: blink 5s infinite; }
+  @keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+  #brand-text { display: flex; flex-direction: column; justify-content: center; height: var(--doodle-h); }
+  #brand-name { font-size: calc(var(--doodle-w) * 0.225); line-height: 1.1; font-weight: 600; letter-spacing: -0.01em; }
+  #brand-role { position: relative; overflow: hidden; height: 1.15em; line-height: 1.15; font-size: calc(var(--doodle-w) * 0.165); font-weight: 400; color: #8a8a8a; min-width: 9em; }
+  #brand-role span { position: absolute; left: 0; top: 0; white-space: nowrap; transform: translateY(110%); opacity: 0; transition: transform 0.6s cubic-bezier(.2,.8,.2,1), opacity 0.6s ease; }
+  #brand-role span.in  { transform: translateY(0); opacity: 1; }
+  #brand-role span.out { transform: translateY(-110%); opacity: 0; }
+
+  /* Link row: small caps, brackets fade in on hover. The current
+     section keeps its brackets showing, e.g. ( WORK ). */
+  .site-links { display: flex; gap: clamp(28px, 3.2vw, 56px); align-items: center; justify-content: center; font-family: 'Switzer', sans-serif; }
+  .site-links a {
+    position: relative;
+    font-size: clamp(11px, 0.8vw, 13px); font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: #141414; text-decoration: none; white-space: nowrap;
+  }
+  .site-links a::before, .site-links a::after { position: absolute; top: 0; opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; }
+  .site-links a::before { content: '('; right: 100%; margin-right: 0.45em; transform: translateX(4px); }
+  .site-links a::after  { content: ')'; left: 100%;  margin-left: 0.45em;  transform: translateX(-4px); }
+  .site-links a:hover::before, .site-links a:hover::after,
+  .site-links a:focus-visible::before, .site-links a:focus-visible::after,
+  .site-links a.current::before, .site-links a.current::after { opacity: 1; transform: translateX(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    #brand-doodle .eye { animation: none; }
+    #brand-role span { transition: none; }
+  }
+  </style>
+</head>
+<body>
+<div id="canvas">
+
+  <header id="site-header">
+    <a id="brand" href="index.html" aria-label="Reet, home">
+      <svg id="brand-doodle" viewBox="0 5 64 28" fill="none" stroke="#141414" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <defs>
+          <filter id="doodle-rough" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="1.4"/>
+          </filter>
+        </defs>
+        <g filter="url(#doodle-rough)">
+          <!-- head peeking over the line -->
+          <path d="M19 31 C18 15, 25 8, 32 8 C39 8, 46 15, 45 31"/>
+          <!-- eyes -->
+          <ellipse class="eye" cx="27.5" cy="20" rx="2" ry="3" fill="#141414" stroke="none"/>
+          <ellipse class="eye" cx="36.5" cy="20" rx="2" ry="3" fill="#141414" stroke="none"/>
+          <!-- the ledge it's peeking over -->
+          <path d="M2 31 C14 30.5, 50 31.5, 62 31"/>
+          <!-- hands gripping the ledge -->
+          <path d="M8 31 C8 26, 14 26, 14 31 M10.5 28 L10.5 31 M50 31 C50 26, 56 26, 56 31 M53.5 28 L53.5 31"/>
+        </g>
+      </svg>
+      <span id="brand-text">
+        <span id="brand-name">Reet</span>
+        <span id="brand-role" aria-live="off">
+          <span class="in">Storyteller</span>
+          <span>Researcher</span>
+          <span>Designer</span>
+        </span>
+      </span>
+    </a>
+  </header>
+
+  <svg id="about-strings"></svg>
+
+  <main id="about">
+    <!-- About image: replace the filename in src below. -->
+    <div class="about-image">
+      <img src="me copy.jpg" alt="Reet">
+    </div>
+
+    <div class="about-text">
+      <p>Hey! I'm Reet. I think a lot, probably too much, and I've decided to make that useful.</p>
+      <p>I'm drawn to things that challenge the status quo. Projects, ideas, people. Most of what I do starts with trying to understand people and, along the way, trying to understand myself too.</p>
+      <p>I like working with people who challenge me. The debates, the pushback, the moments where a conversation shifts something. Three years in, I'm still learning to listen better than I talk.</p>
+      <p>I play football, practiced ballet, read a lot, and love any chance to get out of my room. Sticky notes are involved at every stage.</p>
+    </div>
+  </main>
+
+  <!-- Link row. -->
+  <nav id="about-links" class="site-links" aria-label="Site">
+    <a href="work.html">Work</a>
+    <a href="about.html" class="current">About</a>
+    <a class="email-link" href="#" data-email="reetmadaan01@gmail.com">Email</a>
+    <a href="https://www.linkedin.com/in/reet-madaan" target="_blank" rel="noopener">LinkedIn</a>
+    <!-- RESUME: replace PASTE-YOUR-RESUME-FILENAME-HERE.pdf with your resume file name, e.g. Reet-Resume.pdf (keep the PDF in the same folder as this page) -->
+    <a href="Resume_reet (2).pdf" target="_blank" rel="noopener">Resume</a>
+  </nav>
+
+</div>
+
+<script>
+/* ── Wavy strings around the about image ─────────────────────────────
+   Same crayon-textured, cursor-reactive line style as the project pages.
+   FRAME_GAP is how far the frame sits outside the image, in px. */
+(function () {
+  'use strict';
+
+  const canvas = document.getElementById('canvas');
+  const svg = document.getElementById('about-strings');
+  const imgBox = document.querySelector('.about-image');
+  if (!canvas || !svg || !imgBox) return;
+  const svgNS = 'http://www.w3.org/2000/svg';
+
+  const FRAME_GAP = 16;
+  const N = 20;
+  const RADIUS = 150;
+  const MAX_DISP = 20;
+  const EASE = 0.15;
+  const EDGE_TAPER = 0.14;
+  const PIN_DEADZONE = 40;
+  const END_CAP_R = 4;
+  const WOBBLE_AMP = 5;
+  const WOBBLE_FREQ_RANGE = [0.9, 1.3];
+  const DRIFT_SPEED_RANGE = [0.05, 0.12];
+
+  let mouseX = -99999, mouseY = -99999;
+  let segments = [], pins = [];
+  const t0 = performance.now();
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const smoothstep = x => x * x * (3 - 2 * x);
+
+  function measure() {
+    const cr = canvas.getBoundingClientRect();
+    const ir = imgBox.getBoundingClientRect();
+    
+    const TL = { x: ir.left - cr.left - FRAME_GAP,  y: ir.top - cr.top - FRAME_GAP };
+    const TR = { x: ir.right - cr.left + FRAME_GAP, y: TL.y };
+    const BR = { x: TR.x, y: ir.bottom - cr.top + FRAME_GAP };
+    const BL = { x: TL.x, y: BR.y };
+
+    const corners = [TL, TR, BR, BL];
+    pins = corners;
+
+    const defs = [
+      { p1: TL, p2: TR, wobble: true },
+      { p1: TR, p2: BR, wobble: true },
+      { p1: BR, p2: BL, wobble: true },
+      { p1: BL, p2: TL, wobble: true },
+    ];
+
+    svg.innerHTML = '';
+    const d = document.createElementNS(svgNS, 'defs');
+    d.innerHTML =
+      '<filter id="about-crayon" filterUnits="userSpaceOnUse" x="-2000" y="-2000" width="4000" height="4000">' +
+      '<feTurbulence type="fractalNoise" baseFrequency="0.75 0.75" numOctaves="2" seed="5" result="noise"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="noise" scale="1.3" xChannelSelector="R" yChannelSelector="G"/>' +
+      '</filter>';
+    svg.appendChild(d);
+
+    segments = defs.map(def => {
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#555555');
+      path.setAttribute('stroke-width', def.wobble ? '2' : '1.6');
+      path.setAttribute('stroke-linecap', 'round');
+      if (def.wobble) path.setAttribute('filter', 'url(#about-crayon)');
+      svg.appendChild(path);
+      return {
+        ...def,
+        pathEl: path,
+        disp: new Array(N).fill(0),
+        waveFreq: rand(WOBBLE_FREQ_RANGE[0], WOBBLE_FREQ_RANGE[1]),
+        wavePhase: rand(0, Math.PI * 2),
+        driftSpeed: rand(DRIFT_SPEED_RANGE[0], DRIFT_SPEED_RANGE[1]) * (Math.random() < 0.5 ? 1 : -1),
+      };
+    });
+
+    corners.forEach(p => {
+      const c = document.createElementNS(svgNS, 'circle');
+      c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', END_CAP_R);
+      c.setAttribute('fill', '#555555');
+      svg.appendChild(c);
+    });
+  }
+
+  function catmullRomPath(points) {
+    let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)];
+      d += ` C ${(p1.x + (p2.x - p0.x) / 6).toFixed(2)} ${(p1.y + (p2.y - p0.y) / 6).toFixed(2)}, ${(p2.x - (p3.x - p1.x) / 6).toFixed(2)} ${(p2.y - (p3.y - p1.y) / 6).toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+    }
+    return d;
+  }
+
+  function render(now) {
+    const elapsed = (now - t0) / 1000;
+    segments.forEach(seg => {
+      const pts = [];
+      const dx0 = seg.p2.x - seg.p1.x, dy0 = seg.p2.y - seg.p1.y;
+      const len = Math.hypot(dx0, dy0) || 1;
+      const perpX = -dy0 / len, perpY = dx0 / len;
+
+      for (let i = 0; i < N; i++) {
+        const t = i / (N - 1);
+        const baseX = seg.p1.x + dx0 * t, baseY = seg.p1.y + dy0 * t;
+        const taper = smoothstep(Math.min(1, Math.min(t, 1 - t) / EDGE_TAPER));
+
+        let wobble = 0;
+        if (seg.wobble) {
+          wobble = Math.sin(t * seg.waveFreq * Math.PI * 2 + seg.wavePhase + elapsed * seg.driftSpeed) * WOBBLE_AMP * taper;
+        }
+
+        const dx = mouseX - baseX, dy = mouseY - baseY;
+        const influence = smoothstep(Math.max(0, 1 - Math.hypot(dx, dy) / RADIUS));
+
+        let nearest = Infinity;
+        for (const p of pins) nearest = Math.min(nearest, Math.hypot(baseX - p.x, baseY - p.y));
+        const pinSuppress = smoothstep(Math.min(1, nearest / PIN_DEADZONE));
+
+        const side = (dx * perpX + dy * perpY) || 0.0001;
+        const target = influence * MAX_DISP * taper * pinSuppress * Math.sign(side);
+        seg.disp[i] += (target - seg.disp[i]) * EASE;
+        if (Math.abs(seg.disp[i]) < 0.01) seg.disp[i] = 0;
+
+        const off = wobble + seg.disp[i];
+        pts.push({ x: baseX + perpX * off, y: baseY + perpY * off });
+      }
+      seg.pathEl.setAttribute('d', catmullRomPath(pts));
+    });
+    requestAnimationFrame(render);
+  }
+
+  canvas.addEventListener('pointermove', e => {
+    const r = canvas.getBoundingClientRect();
+    mouseX = e.clientX - r.left;
+    mouseY = e.clientY - r.top;
+  });
+  canvas.addEventListener('pointerleave', () => { mouseX = -99999; mouseY = -99999; });
+
+  window.addEventListener('resize', measure);
+  window.addEventListener('load', measure);
+  measure();
+  requestAnimationFrame(render);
+})();
+</script>
+
+<script>
+/* Rotating title under the name (same as the home page). */
+(function () {
+  const INTERVAL = 2600;
+  const items = Array.from(document.querySelectorAll('#brand-role span'));
+  if (items.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let i = 0;
+  setInterval(() => {
+    const cur = items[i]; i = (i + 1) % items.length; const next = items[i];
+    cur.classList.remove('in'); cur.classList.add('out');
+    next.classList.remove('out');
+    next.style.transition = 'none'; next.style.transform = 'translateY(110%)';
+    void next.offsetWidth;
+    next.style.transition = ''; next.style.transform = '';
+    next.classList.add('in');
+    setTimeout(() => cur.classList.remove('out'), 650);
+  }, INTERVAL);
+})();
+
+/* Email links: copy the address and show "Copied!" for 2 seconds.
+   The address comes from data-email="..." on the Email link. */
+(function () {
+  document.querySelectorAll('.email-link').forEach(link => {
+    const original = link.textContent; let timer = null;
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const email = link.dataset.email;
+      const fallback = () => {
+        const ta = document.createElement('textarea'); ta.value = email;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (err) {}
+        document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(email).catch(fallback); else fallback();
+      link.textContent = 'Copied!';
+      clearTimeout(timer); timer = setTimeout(() => { link.textContent = original; }, 2000);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
