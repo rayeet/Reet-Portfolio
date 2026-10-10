@@ -139,10 +139,83 @@
     /* OFF — flattened + gray, static */
     #sound-toggle.off .bar { height: 18%; background: #cfcfcf; }
 
+    /* ── Intro / enter screen ─────────────────────────────────────────
+       Covers the page on a first visit. Clicking anywhere (or pressing
+       any key) counts as the visitor's first interaction, which is what
+       browsers require before a page may play sound -- so the strings
+       make sound from the very first hover after this.
+       If the browser already allows sound (e.g. Chrome when coming back
+       from the Work page), the screen is skipped entirely. */
+    #intro {
+      position: fixed; inset: 0; z-index: 100;
+      background: #fafbf7;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: clamp(22px, 2.4vw, 36px);
+      cursor: pointer;
+      opacity: 0;                      /* faded in only if it's needed (see script) */
+      transition: opacity 0.7s ease, visibility 0.7s ease;
+    }
+    #intro.show { opacity: 1; }
+    #intro.hide { opacity: 0; visibility: hidden; pointer-events: none; }
 
+    #intro-doodle { width: clamp(130px, 11vw, 190px); height: auto; display: block; overflow: visible; }
+    #intro-doodle .eye { transform-box: fill-box; transform-origin: center; animation: blink 4s infinite 1.4s; }
+    /* the head rises up from behind the ledge when the screen appears */
+    #intro-doodle .head { transform-box: view-box; transform: translateY(14px); opacity: 0;
+      transition: transform 1.1s cubic-bezier(.2,.8,.2,1) 0.25s, opacity 0.5s ease 0.25s; }
+    #intro.show #intro-doodle .head { transform: translateY(0); opacity: 1; }
+
+    #intro-enter {
+      position: relative;
+      background: none; border: 0; padding: 0; cursor: pointer;
+      font-family: inherit; font-size: clamp(11px, 0.8vw, 13px); font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase; color: #141414;
+      opacity: 0; transition: opacity 0.6s ease 1.1s;
+    }
+    #intro.show #intro-enter { opacity: 1; }
+    /* same bracket style as the nav links, always showing here, gently breathing */
+    #intro-enter::before, #intro-enter::after { position: absolute; top: 0; animation: breathe 2.4s ease-in-out infinite; }
+    #intro-enter::before { content: '('; right: 100%; margin-right: 0.45em; }
+    #intro-enter::after  { content: ')'; left: 100%;  margin-left: 0.45em; }
+    @keyframes breathe { 0%, 100% { opacity: 1; transform: translateX(0); } 50% { opacity: 0.35; } }
+    #intro-enter::before { --dir: 1; }
+    #intro:hover #intro-enter::before { transform: translateX(-3px); }
+    #intro:hover #intro-enter::after  { transform: translateX(3px); }
+
+    @media (prefers-reduced-motion: reduce) {
+      #intro, #intro-enter, #intro-doodle .head { transition: none; }
+      #intro-doodle .eye, #intro-enter::before, #intro-enter::after { animation: none; }
+    }
   </style>
 </head>
 <body>
+
+<!-- Intro / enter screen (see the #intro styles and the INTRO part of the script) -->
+<div id="intro" role="button" tabindex="0" aria-label="Enter Reet's portfolio">
+  <svg id="intro-doodle" viewBox="0 5 64 28" fill="none" stroke="#141414" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <defs>
+      <filter id="intro-rough" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="1.2"/>
+      </filter>
+      <!-- hides the part of the head that's below the ledge while it rises -->
+      <clipPath id="intro-above-ledge"><rect x="-5" y="-5" width="74" height="36"/></clipPath>
+    </defs>
+    <g filter="url(#intro-rough)">
+      <g clip-path="url(#intro-above-ledge)">
+        <g class="head">
+          <path d="M19 31 C18 15, 25 8, 32 8 C39 8, 46 15, 45 31"/>
+          <ellipse class="eye" cx="27.5" cy="20" rx="2" ry="3" fill="#141414" stroke="none"/>
+          <ellipse class="eye" cx="36.5" cy="20" rx="2" ry="3" fill="#141414" stroke="none"/>
+        </g>
+      </g>
+      <path d="M2 31 C14 30.5, 50 31.5, 62 31"/>
+      <path d="M8 31 C8 26, 14 26, 14 31 M10.5 28 L10.5 31 M50 31 C50 26, 56 26, 56 31 M53.5 28 L53.5 31"/>
+    </g>
+  </svg>
+  <span id="intro-enter">Enter</span>
+</div>
+
 <div id="canvas">
 
   <!-- Top bar: doodle + name + rotating title, sound toggle on the right.
@@ -312,6 +385,7 @@
   let phases = LINE_PARAMS.map(p => p.phase);
   let frozenPhases = phases.slice();
   let hoveredLine = -1, animRafId = null, lastTime = null;
+  let introOpen = true;   // true while the enter screen covers the page -- strings ignore the mouse until it's gone
   const reducedMotion = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
   // ─── DOM ─────────────────────────────────────────────────────────────────
@@ -429,6 +503,7 @@
   }
 
   document.addEventListener('pointermove', e => {
+    if (introOpen) return;   // enter screen still covering the strings
     const r = svgEl.getBoundingClientRect(), pad = 30;
     const inArea = e.clientX >= r.left-pad && e.clientX <= r.right+pad && e.clientY >= r.top-pad && e.clientY <= r.bottom+pad;
     if (!inArea) { if (hoveredLine >= 0) onLeave(); return; }
@@ -449,7 +524,8 @@
 
   // Click on a line -> go straight to that line's project.
   document.addEventListener('click', e => {
-    if (e.target.closest('a, button')) return;
+    if (introOpen) return;   // a click on the enter screen never opens a project
+    if (e.target.closest('a, button, #intro')) return;
     let li = hoveredLine;
     if (li < 0) {
       // taps on touch screens don't hover first, so check the tap position
@@ -488,7 +564,7 @@
   // ── Toggle button ──────────────────────────────────────────────────────
   // Sound is ON by default; the icon turns it off and on.
   // (Browsers only let a page make sound after the visitor's first click,
-  // tap or key press anywhere on it -- from then on, hovering plays.)
+  // tap or key press anywhere on it -- the enter screen takes care of that.)
   function updateSoundIcon() {
     toggleBtn.classList.toggle('on', soundEnabled);
     toggleBtn.classList.toggle('off', !soundEnabled);
@@ -526,7 +602,6 @@
   document.addEventListener('pointerdown', e => { if (!toggleBtn.contains(e.target)) ensureAudio(); });
   document.addEventListener('touchstart', ensureAudio, { passive: true });
   document.addEventListener('keydown', ensureAudio);
-  window.addEventListener('wheel', ensureAudio, { passive: true });
 
   // ── Shared glue bus: [voice] → reverb (convolver, blended) → compressor → masterGain → out
   function buildGlueBus() {
@@ -671,6 +746,49 @@
   function clearChordTimer() {
     if (chordTimerId) { clearTimeout(chordTimerId); chordTimerId = null; }
   }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  INTRO — the enter screen.
+  //  On load, the page quietly asks the browser whether sound is already
+  //  allowed. If yes (often the case in Chrome when coming back from
+  //  another page of the site), the screen is skipped. If not, it fades
+  //  in, and the visitor's click on it is the interaction that unlocks
+  //  sound, so the very first string they hover plays.
+  // ═══════════════════════════════════════════════════════════════════
+  const intro = document.getElementById('intro');
+
+  function closeIntro(instant) {
+    if (!introOpen) return;
+    introOpen = false;
+    if (instant) { intro.remove(); return; }
+    intro.classList.add('hide');
+    setTimeout(() => intro.remove(), 800);
+  }
+
+  function enter(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    ensureAudio();      // this click/key press is what lets the browser play sound
+    closeIntro(false);
+  }
+
+  intro.addEventListener('click', enter);
+  intro.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') enter(e);
+  });
+  // any other key press anywhere also enters
+  document.addEventListener('keydown', e => {
+    if (introOpen && !e.metaKey && !e.ctrlKey && !e.altKey) enter();
+  });
+
+  try { ensureAudio(); } catch (err) { /* no Web Audio: just show the intro */ }
+  setTimeout(() => {
+    if (audioCtx && audioCtx.state === 'running') {
+      closeIntro(true);                 // sound already allowed: skip the screen
+    } else {
+      intro.classList.add('show');      // needs a click: show the enter screen
+      intro.focus({ preventScroll: true });
+    }
+  }, 120);
 
 })();
 </script>
