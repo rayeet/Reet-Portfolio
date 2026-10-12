@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Reet — Shadow at rest</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2212%22%20fill%3D%22%23fafbf7%22/%3E%3Cg%20transform%3D%22translate%2832%2033%29%20scale%281.85%29%20translate%28-32%20-20%29%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23141414%22%20stroke-width%3D%222.1%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M19%2031%20C18%2015%2C%2025%208%2C%2032%208%20C39%208%2C%2046%2015%2C%2045%2031%22/%3E%3Cpath%20d%3D%22M16%2031%20C24%2030.6%2C%2040%2031.4%2C%2048%2031%22/%3E%3C/g%3E%3Cellipse%20cx%3D%2227.5%22%20cy%3D%2220%22%20rx%3D%222.2%22%20ry%3D%223.2%22%20fill%3D%22%23141414%22/%3E%3Cellipse%20cx%3D%2236.5%22%20cy%3D%2220%22%20rx%3D%222.2%22%20ry%3D%223.2%22%20fill%3D%22%23141414%22/%3E%3C/g%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap" rel="stylesheet" />
@@ -210,6 +211,10 @@
   }
   .media-grid .placeholder { aspect-ratio: 4 / 3; background: #e2e2e2; }
   .media-grid img, .media-grid video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Image's white background melts into the page colour: the frame takes
+     the page colour and the image multiplies over it (white -> page bg). */
+  .media-grid .placeholder.blend-bg { background: var(--bg); }
+  .media-grid .blend-bg img { mix-blend-mode: multiply; }
 
   .ext-link {
     display: inline-flex;
@@ -455,7 +460,7 @@
           <p>Before settling on control and dependency as the core of the piece, a few other directions were on the table. <mark class="hl">Jungian psychology reads the shadow as the unconscious, repressed part of a person</mark>, the piece could have leaned into that, using shadow to surface what someone hides even from themselves. <mark class="hl">Plato's allegory treats shadow as illusion, mistaking what you see for the whole truth</mark>, which could have pushed the project toward questioning perception instead of control. There was also the idea of the <mark class="hl">shadow showing how others see you instead of your physical outline, or revealing your thoughts and values, something closer to who you are than your shape</mark>. All of these stayed at sketch stage, but they mapped out the space the final direction came from.</p>
           <!-- Explorations image (single): replace the filename in src below. -->
           <div class="media-grid" style="--cols:1;">
-            <div class="placeholder">
+            <div class="placeholder blend-bg">
               <img src="Shadow3.png" alt="Shadow at rest explorations">
             </div>
           </div>
@@ -1085,5 +1090,145 @@
 })();
 </script>
 
+
+<!-- =====================================================================
+     CURSOR -- a short crayon line trails the pointer and fades out. On
+     the home page it takes the colour of the string you're on. Only runs
+     on devices with a mouse/trackpad; touch devices keep normal behaviour.
+     ===================================================================== -->
+<style>
+  html.cur-on, html.cur-on * { cursor: none !important; }
+  #cur { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 9999; pointer-events: none; }
+  #cur > * { position: fixed; left: 0; top: 0; pointer-events: none; will-change: transform; }
+  #cur-trail { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+
+  .c-dot { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #141414; transition: background 0.2s ease, opacity 0.2s ease; }
+
+
+</style>
+<script>
+(function () {
+  'use strict';
+  const CURSOR_STYLE = 'trail';
+
+  if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+  const INK = '#141414';
+  const root = document.documentElement;
+  const wrap = document.createElement('div'); wrap.id = 'cur';
+  document.body.appendChild(wrap);
+  const caption = document.getElementById('caption');
+
+  let mx = -100, my = -100, lx = -100, ly = -100, vx = 0, tilt = 0, inside = false;
+  let overLink = false, strColor = null, prevStr = null;
+  const trail = [];
+  let els = {};
+
+  document.addEventListener('pointermove', e => {
+    vx = e.clientX - mx; mx = e.clientX; my = e.clientY; inside = true;
+    overLink = !!(e.target.closest && e.target.closest('a, button, #intro'));
+  });
+  document.addEventListener('pointerleave', () => { inside = false; });
+  document.addEventListener('mouseout', e => { if (!e.relatedTarget) inside = false; });
+
+  function stringColour() {
+    // the home page shows the hovered string's question in that string's colour
+    if (caption && caption.classList.contains('visible') && caption.style.color) return caption.style.color;
+    return null;
+  }
+
+  const PICK_SVG = '<svg viewBox="0 0 26 30"><path d="M3.2 3.6 C 9 1.2, 17.5 1.4, 23 4.4 C 24.6 5.4, 24.4 7.8, 23.4 10.2 C 20.6 17, 16.4 23.6, 13.6 27.2 C 12.6 28.4, 11.2 28.3, 10.4 27 C 7.4 22.2, 3.6 15.4, 1.8 9.6 C 1.1 7.2, 1.4 4.8, 3.2 3.6 Z" fill="#fafbf7" stroke="#141414" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 7.2 C 10 6.2, 14.4 6.2, 18 7.4" fill="none" stroke="#141414" stroke-width="1" stroke-linecap="round" opacity="0.45"/></svg>';
+  const PEEK_SVG = '<svg viewBox="0 5 64 28" fill="none" stroke="#141414" stroke-width="2.4" stroke-linecap="round"><path class="hd" d="M19 31 C18 15, 25 8, 32 8 C39 8, 46 15, 45 31" fill="#fafbf7"/><ellipse class="e1" cx="27.5" cy="20" rx="2.3" ry="3.3" fill="#141414" stroke="none"/><ellipse class="e2" cx="36.5" cy="20" rx="2.3" ry="3.3" fill="#141414" stroke="none"/><path d="M12 31 L52 31"/></svg>';
+
+  function build() {
+    wrap.innerHTML = ''; els = {}; trail.length = 0;
+    root.classList.toggle('cur-on', CURSOR_STYLE !== 'none');
+    if (CURSOR_STYLE === 'ring') {
+      els.ring = document.createElement('div'); els.ring.className = 'c-ring';
+      els.dot = document.createElement('div'); els.dot.className = 'c-dot';
+      wrap.append(els.ring, els.dot);
+    } else if (CURSOR_STYLE === 'pick') {
+      els.pick = document.createElement('div'); els.pick.className = 'c-pick'; els.pick.innerHTML = PICK_SVG;
+      wrap.append(els.pick);
+    } else if (CURSOR_STYLE === 'trail') {
+      els.cv = document.createElement('canvas'); els.cv.id = 'cur-trail';
+      els.dot = document.createElement('div'); els.dot.className = 'c-dot';
+      wrap.append(els.cv, els.dot);
+      sizeCanvas();
+    } else if (CURSOR_STYLE === 'peek') {
+      els.peek = document.createElement('div'); els.peek.className = 'c-peek'; els.peek.innerHTML = PEEK_SVG;
+      wrap.append(els.peek);
+    }
+  }
+  function sizeCanvas() {
+    if (!els.cv) return;
+    const dpr = window.devicePixelRatio || 1;
+    els.cv.width = innerWidth * dpr; els.cv.height = innerHeight * dpr;
+    els.cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', sizeCanvas);
+
+  const place = (el, x, y, extra) => { el.style.transform = `translate(${x}px, ${y}px)` + (extra || ''); };
+
+  function frame() {
+    strColor = stringColour();
+    const col = strColor || INK;
+    lx += (mx - lx) * 0.2; ly += (my - ly) * 0.2;
+    tilt += (Math.max(-28, Math.min(28, vx * 1.6)) - tilt) * 0.12; vx *= 0.85;
+    const hide = inside ? '1' : '0';
+
+    if (els.ring) {
+      els.dot.style.opacity = hide; els.ring.style.opacity = hide;
+      place(els.dot, mx, my); place(els.ring, lx, ly);
+      els.dot.style.background = col;
+      els.ring.style.borderColor = strColor ? strColor : 'rgba(20,20,20,0.55)';
+      els.ring.classList.toggle('big', overLink || !!strColor);
+    }
+    if (els.pick) {
+      els.pick.style.opacity = hide;
+      place(els.pick, mx, my, ` rotate(${(150 + tilt).toFixed(1)}deg)`);   // tip points up-left; the tip is where you click
+      const body = els.pick.querySelector('path');
+      body.setAttribute('fill', strColor || '#fafbf7');
+      body.setAttribute('stroke', strColor ? strColor : INK);
+      if (strColor && strColor !== prevStr) { els.pick.classList.remove('wob'); void els.pick.offsetWidth; els.pick.classList.add('wob'); }
+      els.pick.style.scale = overLink ? '1.15' : '1';
+    }
+    if (els.cv) {
+      els.dot.style.opacity = hide; place(els.dot, mx, my); els.dot.style.background = col;
+      if (inside) trail.push({ x: mx, y: my, c: col });
+      while (trail.length > 18) trail.shift();
+      if (!inside && trail.length) trail.shift();
+      const g = els.cv.getContext('2d');
+      g.clearRect(0, 0, innerWidth, innerHeight);
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      for (let i = 1; i < trail.length; i++) {
+        const a = trail[i - 1], b = trail[i], t = i / trail.length;
+        g.strokeStyle = b.c; g.globalAlpha = t * 0.8; g.lineWidth = 1 + t * 3;
+        g.beginPath();
+        // a tiny jitter so it reads like crayon rather than a vector line
+        g.moveTo(a.x + (Math.random() - 0.5) * 0.8, a.y + (Math.random() - 0.5) * 0.8);
+        g.lineTo(b.x, b.y); g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+    if (els.peek) {
+      els.peek.style.opacity = hide;
+      place(els.peek, lx, ly, ` rotate(${(tilt * 0.3).toFixed(1)}deg)`);
+      const dx = Math.max(-2.2, Math.min(2.2, (mx - lx) * 0.12)), dy = Math.max(-1.6, Math.min(1.6, (my - ly) * 0.12));
+      els.peek.querySelector('.e1').setAttribute('transform', `translate(${dx} ${dy})`);
+      els.peek.querySelector('.e2').setAttribute('transform', `translate(${dx} ${dy})`);
+      els.peek.querySelector('svg').setAttribute('stroke', strColor || INK);
+      els.peek.querySelectorAll('ellipse').forEach(e => e.setAttribute('fill', strColor || INK));
+      els.peek.style.scale = overLink ? '1.2' : '1';
+    }
+    prevStr = strColor;
+    requestAnimationFrame(frame);
+  }
+
+  build();
+  requestAnimationFrame(frame);
+
+})();
+</script>
 </body>
 </html>
